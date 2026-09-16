@@ -1,0 +1,14 @@
+﻿manifest
+package
+update-package
+
+# local Sitecore configuration and tooling files
+config/nextjs105-app.config
+*.deploysecret.config
+*.user
+*.suo
+
+# generated package artifacts
+*.update
+*.zip
+*.nupkg
