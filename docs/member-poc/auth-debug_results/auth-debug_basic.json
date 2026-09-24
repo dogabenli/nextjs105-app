@@ -1,0 +1,1 @@
+{"issuer":"https://dev-blimome4usawppx7.us.auth0.com/","audience":["https://sitecore-member-poc-api","https://dev-blimome4usawppx7.us.auth0.com/userinfo"],"hasSubject":true,"expiresAt":1790348927,"roles":["member-basic"]}
