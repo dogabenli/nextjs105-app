@@ -12,20 +12,32 @@ import { resolveLocaleFromHost, SUPPORTED_LOCALES } from 'lib/locale-resolver';
 class LocaleRewritePlugin implements MiddlewarePlugin {
   order = 0;
 
-  async exec(req: NextRequest): Promise<NextResponse> {
+  async exec(req: NextRequest, res?: NextResponse): Promise<NextResponse> {
     const { pathname } = req.nextUrl;
+
+    // Auth0 routes are handled and already finalized by auth0Plugin (which runs first) -
+    // they are not Sitecore content paths, so don't rewrite them.
+    if (pathname.startsWith('/auth')) {
+      return res ?? NextResponse.next();
+    }
+
     const firstSegment = pathname.split('/')[1];
 
     // Already locale-prefixed (e.g. a direct request for /da/... or a re-entrant rewrite) - skip.
     if (SUPPORTED_LOCALES.includes(firstSegment)) {
-      return NextResponse.next();
+      return res ?? NextResponse.next();
     }
 
     const locale = resolveLocaleFromHost(req.headers.get('host') ?? undefined);
     const url = req.nextUrl.clone();
     url.pathname = `/${locale}${pathname}`;
 
-    return NextResponse.rewrite(url);
+    const rewriteResponse = NextResponse.rewrite(url);
+    // Preserve any Set-Cookie headers (e.g. Auth0 rolling session refresh) from earlier plugins.
+    res?.headers
+      .getSetCookie()
+      .forEach((cookie) => rewriteResponse.headers.append('set-cookie', cookie));
+    return rewriteResponse;
   }
 }
 

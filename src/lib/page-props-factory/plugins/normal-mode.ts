@@ -28,7 +28,8 @@ class NormalModePlugin implements Plugin {
     // request's subdomain - see src/lib/middleware/plugins/locale-rewrite.ts and
     // docs/poc/domain-based-i18n-ssg-isr.md.
     const localeParam = context.params?.locale;
-    props.locale = (Array.isArray(localeParam) ? localeParam[0] : localeParam) ?? props.site.language;
+    props.locale =
+      (Array.isArray(localeParam) ? localeParam[0] : localeParam) ?? props.site.language;
 
     // Fetch layout data, passing on req/res for SSR
     const layoutService = this.getLayoutService(props.site.name);

@@ -3,7 +3,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useI18n } from 'next-localization';
 import config from 'temp/config';
-import { SUPPORTED_LOCALES, resolveLocaleFromHost, buildLocaleSwitchHref } from 'lib/locale-resolver';
+import {
+  SUPPORTED_LOCALES,
+  resolveLocaleFromHost,
+  buildLocaleSwitchHref,
+} from 'lib/locale-resolver';
+import AuthStatus from 'components/AuthStatus';
 
 // Prefix public assets with a public URL to enable compatibility with Sitecore editors.
 // If you're not supporting Sitecore editors, you can remove this.
@@ -58,6 +63,9 @@ const Navigation = (): JSX.Element => {
           ))}
         </nav>
       )}
+      <nav className="my-2 my-md-0">
+        <AuthStatus />
+      </nav>
     </div>
   );
 };
