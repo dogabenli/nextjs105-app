@@ -2,6 +2,7 @@ import { JSX, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useI18n } from 'next-localization';
+import { useUser } from '@auth0/nextjs-auth0';
 import config from 'temp/config';
 import {
   SUPPORTED_LOCALES,
@@ -17,6 +18,7 @@ const publicUrl = config.publicUrl;
 const Navigation = (): JSX.Element => {
   const { t } = useI18n();
   const { asPath } = useRouter();
+  const { user, isLoading } = useUser();
   // Host is only known in the browser, so the switcher renders once mounted to avoid a hydration mismatch.
   const [host, setHost] = useState<string | undefined>(undefined);
 
@@ -48,6 +50,11 @@ const Navigation = (): JSX.Element => {
         <Link className="p-2 text-dark" href="/graphql">
           {t('GraphQL')}
         </Link>
+        {!isLoading && user && (
+          <Link className="p-2 text-dark" href="/member">
+            {t('Member')}
+          </Link>
+        )}
       </nav>
       {host && (
         <nav className="my-2 my-md-0">

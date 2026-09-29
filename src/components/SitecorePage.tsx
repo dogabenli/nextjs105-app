@@ -11,6 +11,7 @@ const SitecorePage = ({
   componentProps,
   layoutData,
   headLinks,
+  memberNav,
 }: SitecorePageProps): JSX.Element => {
   useEffect(() => {
     handleEditorFastRefresh();
@@ -28,7 +29,7 @@ const SitecorePage = ({
         componentFactory={componentBuilder.getComponentFactory({ isEditing })}
         layoutData={layoutData}
       >
-        <Layout layoutData={layoutData} headLinks={headLinks} />
+        <Layout layoutData={layoutData} headLinks={headLinks} memberNav={memberNav} />
       </SitecoreContext>
     </ComponentPropsContext>
   );

@@ -119,6 +119,13 @@ Acceptance:
 - A premium token receives premium content.
 - The Sitecore context returns to anonymous after the request.
 
+Manual verification after local deployment:
+
+1. Confirm the include appears in `showconfig.aspx` under `pipelines/owin.initialize` after the `PostResolveCache` processor.
+2. Call `/sitecore/api/layout/render/jss?item=/member` without a bearer token and expect `401`.
+3. Call the same endpoint with basic and premium bearer tokens and verify the Sitecore ACL limits each response.
+4. Check the Sitecore log for startup errors, then make an anonymous request and confirm the prior user context is restored.
+
 ## Milestone 6. Authenticated member layout client
 
 Goal: connect member SSR to the secured Layout Service request.
@@ -136,6 +143,28 @@ Acceptance:
 - End-to-end basic and premium scenarios pass.
 - Browser network inspection shows no client-to-Sitecore bearer request.
 - Member HTML is not cached publicly.
+
+Implementation notes:
+
+- Auth0 `AUTH0_AUDIENCE` is `https://sitecore-member-poc-api`; sessions created before
+	this audience was configured must be logged out and back in.
+- Member SSR calls `auth0.getAccessToken(req, res)` and passes the token only to a
+	request-scoped REST fetcher. The fetcher sends the bearer header and no browser cookies.
+- Sitecore 401 and unreadable routes fail closed through the existing not-found result;
+	Sitecore 403 redirects to the controlled `/403` page. All member responses set
+	`Cache-Control: private, no-store`.
+
+Manual verification:
+
+1. Log out, log in again, and confirm the Auth0 login requests the documented API audience.
+2. Logged out: open `/member` and expect `/auth/login?returnTo=/member`.
+3. No-role user: open `/member` and expect the controlled forbidden page.
+4. Basic user: verify `/member/page-1` and `/member/page-2`; verify `/member/page-3`
+	 contains no premium content.
+5. Premium user: verify all three member pages, including premium `/member/page-3`.
+6. While logged in, open a public page and confirm it still uses the public SSG path.
+7. Inspect member responses for `Cache-Control: private, no-store`; do not inspect or log
+	 raw tokens. Confirm Sitecore logs show only safe virtual-user and role diagnostics.
 
 ## Milestone 7. On-demand ISR
 

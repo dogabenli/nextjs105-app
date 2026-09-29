@@ -4,7 +4,7 @@ import { dictionaryServiceFactory } from 'lib/dictionary-service-factory';
 import { layoutServiceFactory } from 'lib/layout-service-factory';
 import { SitecorePageProps } from 'lib/page-props';
 import { pathExtractor } from 'lib/extract-path';
-import { Plugin, isServerSidePropsContext } from '..';
+import { PagePropsFactoryOptions, Plugin, isServerSidePropsContext } from '..';
 
 class NormalModePlugin implements Plugin {
   private dictionaryServices: Map<string, DictionaryService>;
@@ -17,7 +17,11 @@ class NormalModePlugin implements Plugin {
     this.layoutServices = new Map<string, LayoutService>();
   }
 
-  async exec(props: SitecorePageProps, context: GetServerSidePropsContext | GetStaticPropsContext) {
+  async exec(
+    props: SitecorePageProps,
+    context: GetServerSidePropsContext | GetStaticPropsContext,
+    options?: PagePropsFactoryOptions
+  ) {
     if (context.preview) return props;
 
     // Get normalized Sitecore item path
@@ -32,7 +36,7 @@ class NormalModePlugin implements Plugin {
       (Array.isArray(localeParam) ? localeParam[0] : localeParam) ?? props.site.language;
 
     // Fetch layout data, passing on req/res for SSR
-    const layoutService = this.getLayoutService(props.site.name);
+    const layoutService = this.getLayoutService(props.site.name, options);
     props.layoutData = await layoutService.fetchLayoutData(
       path,
       props.locale,
@@ -72,7 +76,11 @@ class NormalModePlugin implements Plugin {
     return dictionaryService;
   }
 
-  private getLayoutService(siteName: string): LayoutService {
+  private getLayoutService(siteName: string, options?: PagePropsFactoryOptions): LayoutService {
+    if (options?.layoutServiceOptions?.accessToken) {
+      return layoutServiceFactory.create(siteName, options.layoutServiceOptions);
+    }
+
     if (this.layoutServices.has(siteName)) {
       return this.layoutServices.get(siteName)!;
     }

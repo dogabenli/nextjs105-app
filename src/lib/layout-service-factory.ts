@@ -3,6 +3,7 @@ import {
   RestLayoutService,
   GraphQLLayoutService,
   constants,
+  NativeDataFetcher,
 } from '@sitecore-jss/sitecore-jss-nextjs';
 import config from 'temp/config';
 import clientFactory from 'lib/graphql-client-factory';
@@ -15,7 +16,39 @@ export class LayoutServiceFactory {
    * @param {string} siteName site name
    * @returns {LayoutService} service instance
    */
-  create(siteName: string): LayoutService {
+  create(siteName: string, options?: { accessToken?: string }): LayoutService {
+    if (options?.accessToken) {
+      return new RestLayoutService({
+        apiHost: config.sitecoreApiHost,
+        apiKey: config.sitecoreApiKey,
+        siteName,
+        configurationName: 'jss',
+        dataFetcherResolver: <T>() => {
+          const nativeFetcher = new NativeDataFetcher({ debugger: () => undefined });
+
+          return (url: string, data?: RequestInit) =>
+            (async () => {
+              console.error('member_layout_target', new URL(url).pathname);
+              try {
+                return await nativeFetcher.fetch<T>(url, {
+                  ...data,
+                  headers: {
+                    authorization: `Bearer ${options.accessToken}`,
+                  },
+                });
+              } catch (error) {
+                const status =
+                  typeof error === 'object' && error !== null && 'response' in error
+                    ? (error.response as { status?: unknown }).status
+                    : undefined;
+                console.error('member_layout_status', status ?? 'unknown');
+                throw error;
+              }
+            })();
+        },
+      });
+    }
+
     return process.env.FETCH_WITH === constants.FETCH_WITH.GRAPHQL
       ? new GraphQLLayoutService({
           siteName,

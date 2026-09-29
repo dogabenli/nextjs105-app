@@ -23,8 +23,13 @@ export interface Plugin {
    */
   exec(
     props: SitecorePageProps,
-    context: GetServerSidePropsContext | GetStaticPropsContext
+    context: GetServerSidePropsContext | GetStaticPropsContext,
+    options?: PagePropsFactoryOptions
   ): Promise<SitecorePageProps>;
+}
+
+export interface PagePropsFactoryOptions {
+  layoutServiceOptions?: { accessToken?: string };
 }
 
 export class SitecorePagePropsFactory {
@@ -34,7 +39,8 @@ export class SitecorePagePropsFactory {
    * @see SitecorePageProps
    */
   public async create(
-    context: GetServerSidePropsContext | GetStaticPropsContext
+    context: GetServerSidePropsContext | GetStaticPropsContext,
+    options?: PagePropsFactoryOptions
   ): Promise<SitecorePageProps> {
     const startTimestamp = Date.now();
     debug.common('page-props-factory start');
@@ -43,7 +49,7 @@ export class SitecorePagePropsFactory {
       .sort((p1, p2) => p1.order - p2.order)
       .reduce(async (result, plugin) => {
         const props = await result;
-        const newProps = await plugin.exec(props, context);
+        const newProps = await plugin.exec(props, context, options);
         return newProps;
       }, Promise.resolve({} as SitecorePageProps));
 
