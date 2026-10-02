@@ -2,22 +2,22 @@
 
 ## Public page contract
 
-Public pages use the SSG catch-all. They do not use timed regeneration in the first POC iteration. The cached page changes only when the revalidation API receives a valid request for the exact public path.
+Public pages use the SSG catch-all with a five-second timed ISR interval. On-demand revalidation refreshes the requested page without waiting for that interval. Observing stale content before the API call is therefore timing-dependent.
 
 ## Endpoint contract
 
 ```text
 POST /api/revalidate
-Authorization: Bearer <REVALIDATION_SECRET>
+x-revalidate-secret: <REVALIDATE_SECRET>
 Content-Type: application/json
 
-{ "path": "/about", "language": "en" }
+{ "path": "/about", "locale": "en" }
 ```
 
 Successful response:
 
 ```json
-{ "revalidated": true, "path": "/about" }
+{ "revalidated": true, "path": "/en/about" }
 ```
 
 Do not put the secret in a query string because URLs are commonly logged.
@@ -29,9 +29,9 @@ Do not put the secret in a query string because URLs are commonly logged.
 3. Require a string path that begins with exactly one `/`.
 4. Reject an absolute URL, protocol-relative URL, backslash, null byte, `..`, and unsupported query/hash content.
 5. Normalize duplicate slashes and trailing slash consistently with the app.
-6. Require `language` to be one of `SUPPORTED_LOCALES` (`lib/locale-resolver.ts`). The public-facing `path` itself must stay locale-free, matching the domain-based scheme where locale comes from the subdomain, not a path segment.
+6. If supplied, require `locale` to be one of `SUPPORTED_LOCALES` (`lib/locale-resolver.ts`). If omitted, use the configured default language; the endpoint does not infer locale from the request host. Submit a locale-free public path with an explicit `locale` when refreshing a non-default language.
 7. Reject `/member` and every descendant after decoding and normalization, checked against the locale-free `path` (before the internal locale prefix is added).
-8. Build the actual SSG page path as `` `/${language}${normalizedPath}` `` - this is the real route emitted by `src/pages/[locale]/[[...path]].tsx` and produced by the middleware's subdomain rewrite - and call `res.revalidate` with that value, not the public-facing locale-free path and not any other rewritten alias.
+8. Build the actual SSG page path as `` `/${locale}${normalizedPath}` `` (root maps to `/${locale}`) - this is the real route emitted by `src/pages/[locale]/[[...path]].tsx` and produced by the middleware's subdomain rewrite - and call `res.revalidate` with that value, not the public-facing locale-free path and not any other rewritten alias.
 
 ## Suggested helper functions
 
@@ -53,7 +53,7 @@ For the first demo, call the endpoint manually after publishing. If automation i
 
 ```text
 npm run build
-npm run start
+npm run next:start
 ```
 
 Then:
@@ -64,6 +64,23 @@ Then:
 4. POST the exact path to the revalidation endpoint.
 5. Reload and observe the new output.
 6. Repeat the POST with `/member/page-1` and confirm rejection.
+
+## Manual demo request (PowerShell)
+
+Ensure Next.js has `REVALIDATE_SECRET` configured and restart the production server after changing it. PowerShell does not inherit values loaded by Next.js from `.env.local`. Enter the same secret at the hidden prompt below; do not print or commit it.
+
+```powershell
+$secureSecret = Read-Host 'Enter the configured REVALIDATE_SECRET' -AsSecureString
+$env:REVALIDATE_SECRET = [System.Net.NetworkCredential]::new('', $secureSecret).Password
+
+Invoke-RestMethod -Method Post `
+	-Uri 'http://en.nextjs105.local:3000/api/revalidate' `
+	-Headers @{ 'x-revalidate-secret' = $env:REVALIDATE_SECRET } `
+	-ContentType 'application/json' `
+	-Body '{"path":"/test-page"}'
+```
+
+With the default language configured as `en`, expect `revalidated: true` and `path: /en/test-page`. Reload `/test-page` to check the published content. For Danish, send `{"path":"/test-page","locale":"da"}` to refresh only `/da/test-page`.
 
 ## Scaling note
 
