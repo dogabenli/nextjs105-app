@@ -2,50 +2,50 @@
 
 ## Test identities
 
-| Persona | Auth0 role | Expected Sitecore role |
-| --- | --- | --- |
-| Anonymous | none | `extranet\\anonymous` |
-| Basic member | `member-basic` | `extranet\\Extranet 1`, via base `extranet\\Extranet` |
+| Persona        | Auth0 role       | Expected Sitecore role                                                            |
+| -------------- | ---------------- | --------------------------------------------------------------------------------- |
+| Anonymous      | none             | `extranet\\anonymous`                                                             |
+| Basic member   | `member-basic`   | `extranet\\Extranet 1`, via base `extranet\\Extranet`                             |
 | Premium member | `member-premium` | `extranet\\Extranet 2`, via base `extranet\\Extranet` plus explicit premium grant |
-| No-role user | none | Rejected before Layout Service |
+| No-role user   | none             | Rejected before Layout Service                                                    |
 
 ## Functional matrix
 
-| Scenario | Expected result |
-| --- | --- |
-| Anonymous opens public home | `200`, static response |
-| Basic user opens public home | Same shared static content; header identity loads separately |
-| Anonymous opens `/member` | Redirect to Auth0 |
-| Login returns to original member path | Member page SSR renders |
-| Basic opens page 1 | `200` |
-| Basic opens premium page 3 | `403` |
-| Premium opens page 3 | `200` |
-| No-role user opens member page | `403` |
-| Logout then refresh member page | Redirect to Auth0 |
-| Missing member item | `404` |
+| Scenario                              | Expected result                                              |
+| ------------------------------------- | ------------------------------------------------------------ |
+| Anonymous opens public home           | `200`, static response                                       |
+| Basic user opens public home          | Same shared static content; header identity loads separately |
+| Anonymous opens `/member`             | Redirect to Auth0                                            |
+| Login returns to original member path | Member page SSR renders                                      |
+| Basic opens page 1                    | `200`                                                        |
+| Basic opens premium page 3            | `403`                                                        |
+| Premium opens page 3                  | `200`                                                        |
+| No-role user opens member page        | `403`                                                        |
+| Logout then refresh member page       | Redirect to Auth0                                            |
+| Missing member item                   | `404`                                                        |
 
 ## Token-negative matrix
 
-| Token condition | Expected Sitecore response |
-| --- | --- |
-| Missing | `401` |
-| Expired | `401` |
-| Wrong issuer | `401` |
-| Wrong audience | `401` |
-| Modified payload/signature | `401` |
-| Valid, unknown external role | `403` |
-| Valid, empty mapped roles | `403` |
+| Token condition              | Expected Sitecore response |
+| ---------------------------- | -------------------------- |
+| Missing                      | `401`                      |
+| Expired                      | `401`                      |
+| Wrong issuer                 | `401`                      |
+| Wrong audience               | `401`                      |
+| Modified payload/signature   | `401`                      |
+| Valid, unknown external role | `403`                      |
+| Valid, empty mapped roles    | `403`                      |
 
 ## Cache tests
 
-| Test | Evidence |
-| --- | --- |
-| Public route is SSG | Build output and cache/debug log classify it as static |
-| Public route stays stale after publish | HTML/content remains unchanged before revalidation |
-| Exact path revalidation works | Content changes after successful POST |
-| Member route is SSR | Server timestamp/correlation changes per request |
-| Member response is private | `Cache-Control: private, no-store` |
-| Member path cannot be revalidated | Endpoint returns `400` or `403` |
+| Test                                   | Evidence                                               |
+| -------------------------------------- | ------------------------------------------------------ |
+| Public route is SSG                    | Build output and cache/debug log classify it as static |
+| Public route stays stale after publish | HTML/content remains unchanged before revalidation     |
+| Exact path revalidation works          | Content changes after successful POST                  |
+| Member route is SSR                    | Server timestamp/correlation changes per request       |
+| Member response is private             | `Cache-Control: private, no-store`                     |
+| Member path cannot be revalidated      | Endpoint returns `400` or `403`                        |
 
 ## Leakage tests
 
@@ -82,11 +82,10 @@ Expected results must be defined after one canonical normalization step. Prefix-
 
 ## Five-minute demonstration
 
-1. Show public page build classification and current content.
-2. Change/publish public content, refresh, and show it is still cached.
-3. Trigger revalidation and show the update.
-4. Open member page anonymously and log in as basic.
-5. Show basic page success and premium page denial.
-6. Log in as premium and show premium page success.
-7. Show Sitecore Access Viewer roles and a sanitized server log proving virtual-user mapping.
-
+1. Show the static public page classification and default `/personalize-demo` Content Block.
+2. With Personalize enabled and consent granted, open the demo page on `en.nextjs105.local`; show the draft experience in QA/Preview and its change to only the selected Content Block.
+3. Navigate to another public page and back; verify one VIEW per completed navigation and that the hosted Web Personalization script reruns without duplicate markup.
+4. Show the default content remains usable when Personalize is disabled or blocked. The full setup and verification sequence is in [11-personalize.md](11-personalize.md).
+5. Change/publish public content, refresh, and show it is still cached; call the exact-path revalidation endpoint and show the new default content.
+6. Open a member page anonymously and log in as basic; show basic page success and premium page denial.
+7. Log in as premium and show premium page success, then show Sitecore Access Viewer roles and a sanitized server log proving virtual-user mapping.

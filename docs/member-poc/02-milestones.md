@@ -202,3 +202,68 @@ Acceptance:
 - Another developer can run the demo using only repository documentation and environment values.
 - Every success criterion in the root README is evidenced.
 
+## Milestone 9. Standalone Sitecore Personalize web experience
+
+Goal: prove that standalone Sitecore Personalize can personalize one component on a public SSG/ISR page at runtime without creating visitor-specific static output or changing member authorization.
+
+Scope:
+
+- Use the standalone Sitecore Engage SDK, not embedded SitecoreAI/XM Cloud personalization.
+- Continue using the existing public catch-all route; do not add a dedicated Next.js route for the demo page.
+- The `/personalize-demo` page is created in Sitecore and is resolved by the existing catch-all route.
+- Personalize one existing `ContentBlock.tsx` rendering on that public page only.
+- Keep Auth0 roles, Sitecore item security, and member pages unchanged.
+- Keep the default Content Block heading and rich-text content useful when Personalize is unavailable or the visitor is not targeted.
+
+Tasks:
+
+1. Create `/personalize-demo` in Sitecore and add exactly one existing Content Block rendering with a datasource containing default `heading` and `content` values. No new Next.js page file or component type is required.
+2. Update the root element of `ContentBlock.tsx` with a stable explicit selector such as `data-personalize-slot="content-block"`. Preserve the existing `contentBlock`, `contentTitle`, and `contentDescription` classes and the existing `Text`, `RichText`, and `withDatasourceCheck` behavior. Do not target generated CSS classes or placeholder positions. Because the POC page contains exactly one Content Block, the Web Experience may target this stable root selector on that page; document that a production page with multiple Content Blocks would require a unique rendering-level identifier.
+3. Install and pin `@sitecore/engage`. Treat compatibility with the current Next.js 16.2 Pages Router application as an explicit spike because the current Sitecore walkthrough documents testing only through Next.js 14.2.5.
+4. Add typed configuration for `NEXT_PUBLIC_PERSONALIZE_ENABLED`, `NEXT_PUBLIC_PERSONALIZE_CLIENT_KEY`, `NEXT_PUBLIC_PERSONALIZE_TARGET_URL`, `NEXT_PUBLIC_PERSONALIZE_POINT_OF_SALE`, `NEXT_PUBLIC_PERSONALIZE_COOKIE_DOMAIN`, `NEXT_PUBLIC_PERSONALIZE_CHANNEL`, and `NEXT_PUBLIC_PERSONALIZE_CURRENCY`. Derive the VIEW-event language from the active public locale. Update `.env.example` without adding real values.
+5. Add an application-level Engage provider and mount it once from `src/pages/_app.tsx`. Do not initialize Engage inside `ContentBlock.tsx` or on every render.
+6. For this POC, use client-set Personalize cookies with `forceServerCookieMode: false` so the existing locale/authentication proxy remains unchanged. Record server-set cookies as a production hardening decision, not part of this milestone.
+7. Initialize Engage only in the browser and only when the feature flag is enabled and consent has been granted. If the POC has no consent manager, implement a small injectable consent check and document the local demo override.
+8. Enable browser-side web personalization with `webPersonalization: true`.
+9. Send exactly one VIEW event after initial initialization. Use the clean browser-visible path and active language, not the internal locale-prefixed rewrite path.
+10. Subscribe to the Pages Router `routeChangeComplete` event. After each completed client-side navigation, send exactly one VIEW event and call `window.Engage.triggerExperiences()` so live Web Experiences are evaluated for the new route. Remove the subscription during cleanup and avoid double-firing on the initial load.
+11. Skip tracking and experience execution for `/_next`, `/api`, `/auth`, Sitecore editing/preview endpoints, and other non-page requests. Do not send Auth0 tokens, session cookies, Sitecore roles, or other security data to Personalize.
+12. Add only the CSP/connect-src/script-src entries required by the configured Personalize region and document them; do not weaken the remaining policy.
+13. In standalone Sitecore Personalize, create a Web Experience targeted to `/personalize-demo`. Configure one variant that changes only the heading and/or rich-text content inside `[data-personalize-slot="content-block"]`. Keep the experience idempotent so rerunning it updates the existing Content Block instead of inserting duplicate markup.
+14. Use the Personalize QA/Preview tool or one simple deterministic demo condition to prove targeted versus non-targeted behavior. Do not use personalization as an authorization mechanism.
+15. Verify the VIEW event in Personalize Event Viewer using the browser ID, then remove any temporary browser-ID console logging.
+16. Extend the repository documentation and five-minute demo script with configuration, consent assumptions, Personalize setup, verification steps, fallback behavior, and the Next.js 16.2 compatibility result.
+
+Acceptance:
+
+- The public demo route is still emitted as SSG/ISR and member routes remain SSR with `Cache-Control: private, no-store`.
+- The generated HTML and ISR cache contain only the default Sitecore Content Block heading and content, never a visitor-specific Personalize variant.
+- A targeted browser sees the personalized Content Block after hydration; a non-targeted browser sees the default Sitecore heading and content.
+- Blocking or disabling Personalize leaves the default Content Block usable and produces no unhandled application error.
+- Initial load sends one VIEW event; each completed client-side route change sends one additional VIEW event with no duplicates.
+- Returning to the demo page through client-side navigation reruns the Web Experience without duplicated markup.
+- A Sitecore content change remains stale until the existing on-demand ISR endpoint revalidates the exact public path; after revalidation, the new default content is served and Personalize can still apply its runtime variant.
+- Personalize activity never calls the revalidation endpoint and never changes the cached page per visitor.
+- No Auth0 access token, authentication session value, or Sitecore security role appears in Personalize requests, browser storage added by this milestone, page props, HTML, or logs.
+- The production build, TypeScript checks, existing automated tests, and new Personalize provider tests pass on the pinned dependency versions.
+
+Suggested automated tests:
+
+1. Engage initialization is disabled when the feature flag is false.
+2. Engage initialization waits for consent.
+3. Initialization occurs once even when React rerenders.
+4. Initial load produces one VIEW event.
+5. `routeChangeComplete` produces one VIEW event and one `triggerExperiences()` call.
+6. Excluded routes do not produce Personalize calls.
+7. Event handlers are removed when the provider unmounts.
+8. `ContentBlock.tsx` renders its default Sitecore `heading` and `content` fields without the Engage SDK and retains `withDatasourceCheck` behavior.
+
+Manual verification:
+
+1. Run a production build and confirm the demo route is static while `/member` remains dynamic.
+2. Request the demo page HTML directly and confirm it contains only the default Sitecore Content Block heading and content.
+3. Open the page in a targeted browser and confirm the Web Experience changes only the selected Content Block.
+4. Open the page in a non-targeted or clean browser and confirm the default Content Block remains.
+5. Navigate away and back using Next.js client-side navigation; confirm one new VIEW event and no duplicate personalized markup.
+6. Disable the feature flag or block the Personalize endpoint; confirm the default Content Block still works.
+7. Change the Content Block datasource in Sitecore, publish it, verify the old static content remains, invoke the existing exact-path revalidation endpoint, and confirm the new default heading/content appears before the runtime variant is applied.

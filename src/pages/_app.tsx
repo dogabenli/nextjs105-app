@@ -5,6 +5,7 @@ import { I18nProvider } from 'next-localization';
 import NProgress from 'nprogress';
 import { SitecorePageProps } from 'lib/page-props';
 import Bootstrap from 'src/Bootstrap';
+import { EngageProvider } from 'lib/EngageProvider';
 
 // Using bootstrap and nprogress are completely optional.
 //  bootstrap is used here to provide a clean layout for samples, without needing extra CSS in the sample app
@@ -32,7 +33,17 @@ function App({ Component, pageProps }: AppProps<SitecorePageProps>): JSX.Element
         // If your app is not multilingual, next-localization and references to it can be removed.
       */}
       <I18nProvider lngDict={dictionary} locale={pageProps.locale}>
-        <Component {...rest} />
+        <EngageProvider
+          router={Router.events}
+          disabled={Boolean(
+            pageProps.layoutData?.sitecore?.context?.pageEditing ||
+              ['edit', 'preview'].includes(
+                String(pageProps.layoutData?.sitecore?.context?.pageState).toLowerCase()
+              )
+          )}
+        >
+          <Component {...rest} />
+        </EngageProvider>
       </I18nProvider>
     </>
   );

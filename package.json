@@ -31,6 +31,7 @@
   "dependencies": {
     "@auth0/nextjs-auth0": "4.30.0",
     "@sitecore-jss/sitecore-jss-nextjs": "~23.0.0",
+    "@sitecore/engage": "1.4.3",
     "bootstrap": "^5.2.3",
     "next": "^16.2.0",
     "next-localization": "^0.12.0",
